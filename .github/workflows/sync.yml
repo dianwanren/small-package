@@ -2,14 +2,13 @@
 
   on:
     schedule:
-      - cron: '0 */6 * * *'   # 每 6 小时同步一次
-    workflow_dispatch:          # 允许手动触发
+      - cron: '0 */6 * * *'
+    workflow_dispatch:
 
   permissions:
     contents: write
 
   env:
-    # 想同步哪些文件夹就写在这里，用空格分隔
     PACKAGES: "luci-theme-argon luci-app-argon-config luci-app-honk honk luci-app-momo luci-app-nikki momo nikki mihomo sing-box"
 
   jobs:
@@ -27,31 +26,13 @@
         - name: 复制到本仓库
           run: |
             for p in $PACKAGES; do
-              rm -rf "$p"
-              cp -r "upstream/$p" "$p"
-            done
-            rm -rf upstream
-
-        - name: 提交并推送
-          run: |
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add -A
-            git diff --cached --quiet || (git commit -m "sync: $(date '+%Y-%m-%d %H:%M')" && git push)
-      steps:
-        - uses: actions/checkout@v4
-
-        - name: 只拉取指定文件夹
-          run: |
-            git clone --depth 1 --filter=blob:none --sparse https://github.com/kenzok8/small-package upstream
-            cd upstream
-            git sparse-checkout set $PACKAGES
-
-        - name: 复制到本仓库
-          run: |
-            for p in $PACKAGES; do
-              rm -rf "$p"
-              cp -r "upstream/$p" "$p"
+              if [ -d "upstream/$p" ]; then
+                rm -rf "$p"
+                cp -r "upstream/$p" "$p"
+                echo "已同步: $p"
+              else
+                echo "::warning::上游仓库中没有找到文件夹: $p"
+              fi
             done
             rm -rf upstream
 
